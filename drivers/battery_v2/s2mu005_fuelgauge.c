@@ -2380,8 +2380,9 @@ static int s2mu005_fuelgauge_parse_dt(struct s2mu005_fuelgauge_data *fuelgauge)
 			pr_err("%s: [Long life] fuelgauge->fg_num_age_step %d\n", __func__,fuelgauge->fg_num_age_step);
 
 			if ((sizeof(fg_age_data_info_t) * fuelgauge->fg_num_age_step) != len) {
-				pr_err("%s: The Long life variables and the data in device tree does not match\n", __func__);
-				BUG();
+				pr_err("%s: Long life DTS mismatch (expected %zu, got %d) - disabling\n",
+					__func__, sizeof(fg_age_data_info_t) * fuelgauge->fg_num_age_step, len);
+				fuelgauge->fg_num_age_step = 0;
 			}
 
 			for (i = 0; i < fuelgauge->fg_num_age_step; i++) {

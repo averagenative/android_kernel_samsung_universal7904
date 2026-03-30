@@ -1466,7 +1466,8 @@ static int fts_init(struct fts_ts_info *info)
 		info->lowpower_flag = 0x00;
 
 #ifdef TCLM_CONCEPT
-	info->tdata->external_factory = false;
+	if (info->tdata)
+		info->tdata->external_factory = false;
 #endif
 #ifdef FTS_SUPPORT_TOUCH_KEY
 	info->tsp_keystatus = 0x00;
@@ -1656,7 +1657,8 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 					}
 
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-					input_info(true, &info->client->dev,
+					if (info->tdata) {
+						input_info(true, &info->client->dev,
 							"%s[R] tID:%d mc:%d tc:%d lx:%d ly:%d Ver[%02X%04X|%01X] C%02XT%04X.%4s%s\n",
 							info->dex_name,
 							TouchID, info->finger[TouchID].mcount, info->touch_count,
@@ -1666,8 +1668,10 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 							info->tdata->nvdata.cal_count, info->tdata->nvdata.tune_fix_ver,
 							info->tdata->tclm_string[info->tdata->nvdata.cal_position].f_name,
 							(info->tdata->tclm_level == TCLM_LEVEL_LOCKDOWN) ? ".L" : " ");
+					}
 #else
-					input_info(true, &info->client->dev,
+					if (info->tdata) {
+						input_info(true, &info->client->dev,
 							"%s[R] tID:%d mc:%d tc:%d Ver[%02X%04X|%01X] C%02XT%04X.%4s%s F%02X%02X\n",
 							info->dex_name,
 							TouchID, info->finger[TouchID].mcount, info->touch_count,
@@ -1677,6 +1681,14 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 							info->tdata->tclm_string[info->tdata->nvdata.cal_position].f_name,
 							(info->tdata->tclm_level == TCLM_LEVEL_LOCKDOWN) ? ".L" : " ",
 							info->pressure_cal_base, info->pressure_cal_delta);
+					} else {
+						input_info(true, &info->client->dev,
+							"%s[R] tID:%d mc:%d tc:%d Ver[%02X%04X|%01X]\n",
+							info->dex_name,
+							TouchID, info->finger[TouchID].mcount, info->touch_count,
+							info->panel_revision, info->fw_main_version_of_ic,
+							info->flip_enable);
+					}
 #endif
 
 					info->finger[TouchID].action = FTS_COORDINATE_ACTION_NONE;

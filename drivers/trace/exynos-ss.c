@@ -3868,6 +3868,7 @@ EXPORT_SYMBOL(exynos_ss_hook_pmsg);
 
 static struct ramoops_platform_data ess_ramoops_data = {
 	.record_size	= SZ_4K,
+	.console_size	= SZ_16K,
 	.pmsg_size	= SZ_4K,
 	.dump_oops	= 1,
 };

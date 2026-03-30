@@ -1744,6 +1744,7 @@ int fimc_is_sensor_s_input(struct fimc_is_device_sensor *device,
 	struct fimc_is_groupmgr *groupmgr;
 	struct fimc_is_vender *vender;
 	u32 sensor_index;
+	u32 module_count;
 
 	BUG_ON(!device);
 	BUG_ON(!device->pdata);
@@ -1767,15 +1768,29 @@ int fimc_is_sensor_s_input(struct fimc_is_device_sensor *device,
 		goto p_err;
 	}
 
-	for (sensor_index = 0; sensor_index < SENSOR_MAX_ENUM; sensor_index++) {
-		if (module_enum[sensor_index].sensor_id == input) {
+	/* The stock Samsung HAL passes sensor position (SENSOR_POSITION_REAR=0,
+	 * SENSOR_POSITION_FRONT=1) as the module field, not the sensor name enum.
+	 * First try matching by position, then fall back to sensor_id match. */
+	module_count = atomic_read(&device->module_count);
+	for (sensor_index = 0; sensor_index < module_count; sensor_index++) {
+		if (module_enum[sensor_index].position == input) {
 			module = &module_enum[sensor_index];
 			break;
 		}
 	}
 
+	/* Fall back to sensor_id match if position match failed */
 	if (!module) {
-		merr("module is not probed, sensor_index = %d", device, sensor_index);
+		for (sensor_index = 0; sensor_index < SENSOR_MAX_ENUM; sensor_index++) {
+			if (module_enum[sensor_index].sensor_id == input) {
+				module = &module_enum[sensor_index];
+				break;
+			}
+		}
+	}
+
+	if (!module) {
+		merr("module is not probed, input = %d", device, input);
 		ret = -EINVAL;
 		goto p_err;
 	}

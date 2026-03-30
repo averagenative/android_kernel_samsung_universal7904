@@ -79,25 +79,27 @@
 #define DEBUGCTL_OFFSET			(DEBUG_REGION_OFFSET + DEBUG_REGION_SIZE)
 #else /* #ifdef ENABLE_IS_CORE */
 /* static reserved memory for libraries */
+#define CDH_SIZE		SZ_128K		/* CDH : Camera Debug Helper */
+
 #define LIB_OFFSET		(VMALLOC_START + 0xF6000000 - 0x8000000)
 #define LIB_START		(LIB_OFFSET + 0x04000000)
 
 #define VRA_LIB_ADDR		(LIB_START)
-#define VRA_LIB_SIZE		(SZ_512K)
+#define VRA_LIB_SIZE		(SZ_512K + SZ_256K)	/* 0xC0000 — after CDH skip, DDK at binary 0xE0000 maps here */
 
 #define DDK_LIB_ADDR		(LIB_START + VRA_LIB_SIZE)
-#define DDK_LIB_SIZE		(SZ_4M)
+#define DDK_LIB_SIZE		((SZ_2M + SZ_1M + SZ_256K) + SZ_1M)	/* 0x540000 — match fimc-is2 */
 
 #define RTA_LIB_ADDR		(LIB_START + VRA_LIB_SIZE + DDK_LIB_SIZE)
-#define RTA_LIB_SIZE		(SZ_1M + SZ_2M)
+#define RTA_LIB_SIZE		(SZ_2M + SZ_2M)
 
 #ifdef USE_RTA_BINARY
-#define LIB_SIZE		(VRA_LIB_SIZE + DDK_LIB_SIZE +  RTA_LIB_SIZE)
+#define LIB_SIZE		(VRA_LIB_SIZE + DDK_LIB_SIZE +  RTA_LIB_SIZE + CDH_SIZE)
 #else
-#define LIB_SIZE		(VRA_LIB_SIZE + DDK_LIB_SIZE)
+#define LIB_SIZE		(VRA_LIB_SIZE + DDK_LIB_SIZE + CDH_SIZE)
 #endif
 
-#define HEAP_START		(LIB_START + LIB_SIZE + 0x80000)
+#define HEAP_START		(LIB_START + SZ_16M)
 #define HEAP_SIZE		(FIMC_IS_HEAP_SIZE)
 
 /* reserved memory for FIMC-IS */

@@ -3296,6 +3296,10 @@ static void fts_input_close(struct input_dev *dev)
 	if (info->board->use_pressure)
 		info->lowpower_flag |= FTS_MODE_PRESSURE;
 #endif
+	/* Always use low power mode on suspend so touch can wake the device.
+	 * Without this, lowpower_flag=0 causes POWERDOWN which disables IRQ wake. */
+	if (!info->lowpower_flag)
+		info->lowpower_flag = FTS_MODE_AOD;
 	fts_stop_device(info, info->lowpower_flag);
 
 #ifdef FTS_SUPPORT_HOVER

@@ -30,13 +30,13 @@
 #endif
 
 #define LIB_ISP_OFFSET		(0x00000080)
-#define LIB_ISP_CODE_SIZE	(0x00240000)
+#define LIB_ISP_CODE_SIZE	(0x00340000)	/* match fimc-is2: DDK code section 3.25MB */
 
 #define LIB_VRA_OFFSET		(0x00000400)
-#define LIB_VRA_CODE_SIZE	(0x00040000)
+#define LIB_VRA_CODE_SIZE	(0x00080000)	/* match fimc-is2: VRA code section 512KB */
 
 #define LIB_RTA_OFFSET		(0x00000000)
-#define LIB_RTA_CODE_SIZE	(0x00100000)
+#define LIB_RTA_CODE_SIZE	(0x00200000)	/* match fimc-is2: RTA code section 2MB */
 
 #define LIB_MAX_TASK		(FIMC_IS_MAX_TASK)
 
@@ -84,11 +84,11 @@ enum task_index {
 /* #define TASK_RTA_AFFINITY		(1) */ /* There is no need to set of cpu affinity for RTA task */
 #define TASK_VRA_AFFINITY		(2)
 
-#define CAMERA_BINARY_RTA_DATA_OFFSET   0x100000
-#define CAMERA_BINARY_DDK_DATA_OFFSET   0x2F0000
-#define CAMERA_BINARY_DDK_CODE_OFFSET   0x80000
-#define CAMERA_BINARY_VRA_DATA_OFFSET   0x40000
-#define CAMERA_BINARY_VRA_DATA_SIZE     0x40000
+#define CAMERA_BINARY_RTA_DATA_OFFSET   LIB_RTA_CODE_SIZE
+#define CAMERA_BINARY_DDK_DATA_OFFSET   0x400000
+#define CAMERA_BINARY_DDK_CODE_OFFSET   0x0C0000
+#define CAMERA_BINARY_VRA_DATA_OFFSET   0x080000
+#define CAMERA_BINARY_VRA_DATA_SIZE     0x040000
 
 enum BinLoadType{
     BINARY_LOAD_ALL,

@@ -3700,6 +3700,9 @@ static int fimc_is_ischain_init_wrap(struct fimc_is_device_ischain *device,
 		}
 
 		for (sindex = 0; sindex < FIMC_IS_SENSOR_COUNT; ++sindex) {
+			struct fimc_is_vender_specific *priv;
+			u32 sensor_id = 0;
+
 			sensor = &core->sensor[sindex];
 
 			if (!test_bit(FIMC_IS_SENSOR_OPEN, &sensor->state))
@@ -3714,8 +3717,24 @@ static int fimc_is_ischain_init_wrap(struct fimc_is_device_ischain *device,
 				goto p_err;
 			}
 
-			if (module_id == module->sensor_id) {
+			/* Match by position (like fimc-is2) — HAL passes position
+			 * (0=rear, 1=front) not sensor_id (39=4HA, 41=5E9) */
+			priv = core->vender.private_data;
+			switch (module_id) {
+			case SENSOR_POSITION_REAR:
+				sensor_id = priv->rear_sensor_id;
+				break;
+			case SENSOR_POSITION_FRONT:
+				sensor_id = priv->front_sensor_id;
+				break;
+			default:
+				sensor_id = module_id;
+				break;
+			}
+
+			if (module->sensor_id == sensor_id) {
 				device->sensor = sensor;
+				module_id = sensor_id;
 				break;
 			}
 		}

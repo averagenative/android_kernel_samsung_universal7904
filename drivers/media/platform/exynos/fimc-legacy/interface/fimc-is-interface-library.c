@@ -1721,6 +1721,29 @@ bool fimc_is_lib_in_irq(void)
 		return false;
 }
 
+/* Stub FD data functions needed by DDK binary (from fimc-is2).
+ * The DDK's WRAP_GetSensorDriver requires these to be non-NULL
+ * even though face detection data isn't available via fimc-legacy. */
+static void fimc_is_get_fd_data_stub(u32 instance,
+	void *face_data, void *fd_in_size)
+{
+	/* Return empty face data */
+	memset(face_data, 0, sizeof(u32)); /* face_num = 0 */
+}
+
+static void fimc_is_get_hybrid_fd_data_stub(u32 instance,
+	void *face_data, void *fd_in_size)
+{
+	memset(face_data, 0, sizeof(u32)); /* face_num = 0 */
+}
+
+static void fimc_is_get_binary_version_stub(char **buf,
+	unsigned int type, unsigned int hint)
+{
+	static char version[] = "DDK_LEGACY";
+	*buf = version;
+}
+
 void set_os_system_funcs(os_system_func_t *funcs)
 {
 	funcs[0] = (os_system_func_t)fimc_is_log_write_console;
@@ -1783,6 +1806,11 @@ void set_os_system_funcs(os_system_func_t *funcs)
 
 	funcs[47] = (os_system_func_t)fimc_is_lib_in_irq;
 	funcs[48] = (os_system_func_t)fimc_is_lib_flush_task_handler;
+
+	/* FD data + binary version — needed by DDK sensor driver init */
+	funcs[49] = (os_system_func_t)fimc_is_get_fd_data_stub;
+	funcs[50] = (os_system_func_t)fimc_is_get_hybrid_fd_data_stub;
+	funcs[91] = (os_system_func_t)fimc_is_get_binary_version_stub;
 
 	/* TODO: re-odering function table */
 	funcs[99] = (os_system_func_t)fimc_is_event_write;
@@ -1985,8 +2013,8 @@ int fimc_is_load_ddk_bin(int loadType)
 	int ret = 0;
 	char bin_type[4] = {0};
 	struct fimc_is_binary bin;
-	os_system_func_t os_system_funcs[100];
-	struct device *device = &gPtr_lib_support.pdev->dev;
+	os_system_func_t os_system_funcs[100] = {NULL};
+	struct device *device;
 	/* fixup the memory attribute for every region */
 	ulong lib_addr;
 	ulong lib_isp = DDK_LIB_ADDR;
@@ -2005,7 +2033,15 @@ int fimc_is_load_ddk_bin(int loadType)
 	snprintf(bin_type, sizeof(bin_type), "ISP");
 #endif
 
+	info_lib("DDK_LOAD[1] pdev=%p lib_addr=0x%lx lib_isp=0x%lx lib_vra=0x%lx\n",
+		gPtr_lib_support.pdev, lib_addr, lib_isp, lib_vra);
+	msleep(200);
+
+	device = &gPtr_lib_support.pdev->dev;
+
 	setup_binary_loader(&bin, 3, -EAGAIN, NULL, NULL);
+	info_lib("DDK_LOAD[2] requesting binary\n");
+	msleep(200);
 #ifdef CAMERA_FW_LOADING_FROM
 	ret = fimc_is_vender_request_binary(&bin, FIMC_IS_ISP_LIB_SDCARD_PATH, FIMC_IS_FW_DUMP_PATH,
 						FIMC_IS_ISP_LIB, device);
@@ -2017,28 +2053,46 @@ int fimc_is_load_ddk_bin(int loadType)
 		err_lib("failed to load ISP library (%d)", ret);
 		return ret;
 	}
+	info_lib("DDK_LOAD[3] binary loaded, size=%zu data=%p\n", bin.size, bin.data);
+	msleep(200);
 
 	if (loadType == BINARY_LOAD_ALL) {
 		/* load DDK library */
+		info_lib("DDK_LOAD[4] nxrw ISP attr vaddr=0x%lx numpages=%d\n",
+			memory_attribute[INDEX_ISP_BIN].vaddr,
+			memory_attribute[INDEX_ISP_BIN].numpages);
 		ret = fimc_is_memory_attribute_nxrw(&memory_attribute[INDEX_ISP_BIN]);
 		if (ret) {
 			err_lib("failed to change into NX memory attribute (%d)", ret);
 			return ret;
 		}
+		msleep(200);
 
 #ifdef USE_ONE_BINARY
+		info_lib("DDK_LOAD[5] nxrw VRA attr vaddr=0x%lx numpages=%d\n",
+			memory_attribute[INDEX_VRA_BIN].vaddr,
+			memory_attribute[INDEX_VRA_BIN].numpages);
 		ret = fimc_is_memory_attribute_nxrw(&memory_attribute[INDEX_VRA_BIN]);
 		if (ret) {
 			err_lib("failed to change into NX memory attribute (%d)", ret);
 			return ret;
 		}
+		msleep(200);
 #endif
+		info_lib("DDK_LOAD[6] memcpy dst=0x%lx src=%p+CDH(%#x) size=%zu-%#x=%zu\n",
+			lib_addr, bin.data, CDH_SIZE, bin.size, CDH_SIZE,
+			bin.size - CDH_SIZE);
 		info_lib("binary info[%s] - type: C/D, from: %s\n",
 			bin_type,
 			was_loaded_by(&bin) ? "built-in" : "user-provided");
-		memcpy((void *)lib_addr, bin.data, bin.size);
-		__flush_dcache_area((void *)lib_addr, bin.size);
+		msleep(200);
+		memcpy((void *)lib_addr, bin.data + CDH_SIZE, bin.size - CDH_SIZE);
+		info_lib("DDK_LOAD[7] memcpy done, flushing dcache\n");
+		msleep(200);
+		__flush_dcache_area((void *)lib_addr, bin.size - CDH_SIZE);
 
+		info_lib("DDK_LOAD[8] rox ISP\n");
+		msleep(200);
 		do{
 			ret = fimc_is_memory_attribute_rox(&memory_attribute[INDEX_ISP_BIN]);
 			if (ret) {
@@ -2047,6 +2101,8 @@ int fimc_is_load_ddk_bin(int loadType)
 			}
 
 #ifdef USE_ONE_BINARY
+			info_lib("DDK_LOAD[9] rox VRA\n");
+			msleep(200);
 			ret = fimc_is_memory_attribute_rox(&memory_attribute[INDEX_VRA_BIN]);
 			if (ret) {
 				err_lib("failed to change into EX memory attribute (%d)", ret);
@@ -2060,21 +2116,47 @@ int fimc_is_load_ddk_bin(int loadType)
 			bin_type,
 			was_loaded_by(&bin) ? "built-in" : "user-provided");
 		memcpy((void *)lib_addr + CAMERA_BINARY_VRA_DATA_OFFSET,
-			bin.data + CAMERA_BINARY_VRA_DATA_OFFSET,
-			CAMERA_BINARY_VRA_DATA_SIZE);
+			bin.data + CAMERA_BINARY_VRA_DATA_OFFSET + CDH_SIZE,
+			CAMERA_BINARY_VRA_DATA_SIZE - CDH_SIZE);
+		__flush_dcache_area((void *)lib_addr + CAMERA_BINARY_VRA_DATA_OFFSET,
+							CAMERA_BINARY_VRA_DATA_SIZE - CDH_SIZE);
+
 		info_lib("binary info[%s] - type: D, from: %s\n",
 			bin_type,
 			was_loaded_by(&bin) ? "built-in" : "user-provided");
 		memcpy((void *)lib_addr + CAMERA_BINARY_DDK_DATA_OFFSET,
-			bin.data + CAMERA_BINARY_DDK_DATA_OFFSET,
-			(bin.size - CAMERA_BINARY_DDK_DATA_OFFSET));
+			bin.data + CAMERA_BINARY_DDK_DATA_OFFSET + CDH_SIZE,
+			(bin.size - CAMERA_BINARY_DDK_DATA_OFFSET - CDH_SIZE));
+		__flush_dcache_area((void *)lib_addr + CAMERA_BINARY_DDK_DATA_OFFSET,
+							bin.size - CAMERA_BINARY_DDK_DATA_OFFSET - CDH_SIZE);
 	}
 
-	fimc_is_ischain_version(FIMC_IS_BIN_DDK_LIBRARY, bin.data, bin.size);
+	info_lib("DDK_LOAD[10] version check\n");
+	msleep(200);
+	fimc_is_ischain_version(FIMC_IS_BIN_DDK_LIBRARY, bin.data + CDH_SIZE, bin.size - CDH_SIZE);
 	release_binary(&bin);
 
+	info_lib("DDK_LOAD[11] set_os_system_funcs\n");
+	msleep(200);
 	gPtr_lib_support.log_ptr = 0;
 	set_os_system_funcs(os_system_funcs);
+
+	{
+		int fi;
+		for (fi = 0; fi < 100; fi++) {
+			if (os_system_funcs[fi])
+				info_lib("DDK_LOAD os_func[%d] = %pS\n", fi, os_system_funcs[fi]);
+		}
+	}
+	info_lib("DDK_LOAD[12] calling startup at 0x%lx\n", lib_isp);
+	{
+		u32 *entry = (u32 *)lib_isp;
+		info_lib("DDK_LOAD entry[0..7]: %08x %08x %08x %08x %08x %08x %08x %08x\n",
+			entry[0], entry[1], entry[2], entry[3],
+			entry[4], entry[5], entry[6], entry[7]);
+	}
+	msleep(500);
+	/* call start_up function for DDK binary */
 	/* call start_up function for DDK binary */
 #ifdef ENABLE_FPSIMD_FOR_USER
 	fpsimd_get();
@@ -2083,6 +2165,7 @@ int fimc_is_load_ddk_bin(int loadType)
 #else
 	((start_up_func_t)lib_isp)((void **)os_system_funcs);
 #endif
+	info_lib("DDK_LOAD[13] startup returned OK\n");
 	return 0;
 }
 
@@ -2141,7 +2224,7 @@ int fimc_is_load_rta_bin(int loadType)
 	struct fimc_is_binary bin;
 	struct device *device = &gPtr_lib_support.pdev->dev;
 
-	os_system_func_t os_system_funcs[100];
+	os_system_func_t os_system_funcs[100] = {NULL};
 	ulong lib_rta = RTA_LIB_ADDR;
 
 	struct fimc_is_memory_attribute rta_memory_attribute = {
@@ -2218,6 +2301,7 @@ int fimc_is_load_bin(void)
 	}
 
 	fimc_is_load_ctrl_lock();
+	info_lib("LOAD_BIN: loading DDK binary\n");
 #ifdef USE_TZ_CONTROLLED_MEM_ATTRIBUTE
 	ret = fimc_is_load_ddk_bin(BINARY_LOAD_DATA);
 #else
@@ -2228,10 +2312,12 @@ int fimc_is_load_bin(void)
 		fimc_is_load_ctrl_unlock();
 		return ret;
 	}
+	info_lib("LOAD_BIN: DDK binary loaded OK\n");
 
 #ifdef USE_TZ_CONTROLLED_MEM_ATTRIBUTE
 	ret = fimc_is_load_vra_bin(BINARY_LOAD_DATA);
 #else
+	info_lib("LOAD_BIN: loading VRA binary\n");
 	ret = fimc_is_load_vra_bin(BINARY_LOAD_ALL);
 #endif
 	if (ret) {
@@ -2239,11 +2325,12 @@ int fimc_is_load_bin(void)
 		fimc_is_load_ctrl_unlock();
 		return ret;
 	}
-
+	info_lib("LOAD_BIN: VRA binary loaded OK\n");
 
 #ifdef USE_TZ_CONTROLLED_MEM_ATTRIBUTE
 	ret = fimc_is_load_rta_bin(BINARY_LOAD_DATA);
 #else
+	info_lib("LOAD_BIN: loading RTA binary\n");
 	ret = fimc_is_load_rta_bin(BINARY_LOAD_ALL);
 #endif
 	if (ret) {
@@ -2251,6 +2338,7 @@ int fimc_is_load_bin(void)
 		fimc_is_load_ctrl_unlock();
 		return ret;
 	}
+	info_lib("LOAD_BIN: RTA binary loaded OK\n");
 	fimc_is_load_ctrl_unlock();
 
 	ret = lib_support_init();

@@ -1,0 +1,22 @@
+/*
+ * Minimal DTB for Samsung DTBH boot image format.
+ * Only contains model_info metadata for dtbhtoolExynos.
+ * The actual device tree comes from dtb+dtbo partitions.
+ */
+
+/dts-v1/;
+
+/ {
+	model = "Samsung GTA3XLWIFI EUR OPEN board based on EXYNOS7904";
+	model_info-chip = <7885>;
+	model_info-platform = "android";
+	model_info-subtype = "samsung";
+	model_info-hw_rev = <0>;
+	model_info-hw_rev_end = <255>;
+	compatible = "samsung,GTA3XLWIFI EUR OPEN", "samsung,Universal7904";
+
+	#address-cells = <2>;
+	#size-cells = <1>;
+
+	chosen { };
+};
