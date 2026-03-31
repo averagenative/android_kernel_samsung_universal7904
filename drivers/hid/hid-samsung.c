@@ -385,8 +385,9 @@ static int samsung_probe(struct hid_device *hdev,
 	int ret;
 	unsigned int cmask = HID_CONNECT_DEFAULT;
 
-	if (!hid_is_usb(hdev))
-		return -EINVAL;
+	/* Don't reject Bluetooth HID devices — the match table includes
+	 * HID_BLUETOOTH_DEVICE entries for Samsung keyboards (0x7021 etc.)
+	 * that need to work over BT, not just USB. */
 
 	ret = hid_parse(hdev);
 	if (ret) {
