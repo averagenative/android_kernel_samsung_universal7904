@@ -357,7 +357,8 @@
 	is_flite = <0>;
 	status = "okay";
 
-	//use_ssvc1_internal;				/* Internal Virual Channel */
+	use_ssvc1_internal;				/* Internal Virtual Channel */
+	use_ssvc3_internal;				/* HAL requests getDstBuffer at pos 5 (SSVC3) */
 };
 
 /* fimc_is_sensor1 - XMIPI_CSI4LB */
