@@ -585,7 +585,7 @@ static struct exynos_ss_item ess_items[] = {
 #endif /* end of MINIMIZED MODE */
 
 #ifdef CONFIG_EXYNOS_SNAPSHOT_PSTORE
-	{"log_pstore",	{SZ_32K,	0, 0, true, true, true}, NULL ,NULL, 0},
+	{"log_pstore",	{SZ_256K,	0, 0, true, true, true}, NULL ,NULL, 0},
 #endif
 
 };
@@ -3882,13 +3882,25 @@ static struct platform_device ess_ramoops = {
 
 static int __init ess_pstore_init(void)
 {
+	int ret;
+
 	if (exynos_ss_get_enable("log_pstore", true)) {
 		ess_ramoops_data.mem_size = exynos_ss_get_item_size("log_pstore");
 		ess_ramoops_data.mem_address = exynos_ss_get_item_paddr("log_pstore");
-		ess_ramoops_data.pmsg_size = ess_ramoops_data.mem_size / 2;
+		ess_ramoops_data.console_size = ess_ramoops_data.mem_size / 4;
+		ess_ramoops_data.pmsg_size = ess_ramoops_data.mem_size / 4;
 		ess_ramoops_data.record_size = ess_ramoops_data.mem_size / 2;
 	}
-	return platform_device_register(&ess_ramoops);
+	pr_info("ess_pstore: addr=0x%lx size=0x%lx record=%lu console=%lu pmsg=%lu\n",
+		(unsigned long)ess_ramoops_data.mem_address,
+		(unsigned long)ess_ramoops_data.mem_size,
+		(unsigned long)ess_ramoops_data.record_size,
+		(unsigned long)ess_ramoops_data.console_size,
+		(unsigned long)ess_ramoops_data.pmsg_size);
+	ret = platform_device_register(&ess_ramoops);
+	if (ret)
+		pr_err("ess_pstore: failed to register ramoops: %d\n", ret);
+	return ret;
 }
 
 static void __exit ess_pstore_exit(void)
