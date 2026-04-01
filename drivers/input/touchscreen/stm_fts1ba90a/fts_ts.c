@@ -1825,10 +1825,11 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 			if (p_gesture_status->sf == FTS_GESTURE_SAMSUNG_FEATURE) {
 				if ((info->lowpower_flag & FTS_MODE_DOUBLETAP_WAKEUP) &&
 						p_gesture_status->stype == FTS_SPONGE_EVENT_DOUBLETAP) {
-					input_report_key(info->input_dev, KEY_HOMEPAGE, 1);
+					input_report_key(info->input_dev, KEY_WAKEUP, 1);
 					input_sync(info->input_dev);
-					input_report_key(info->input_dev, KEY_HOMEPAGE, 0);
-					input_info(true, &info->client->dev, "%s: Dobule Tap Wake up\n", __func__);
+					input_report_key(info->input_dev, KEY_WAKEUP, 0);
+					input_sync(info->input_dev);
+					input_info(true, &info->client->dev, "%s: Dobule Tap Wake up (KEY_WAKEUP)\n", __func__);
 					break;
 				}
 			} else
@@ -2513,6 +2514,7 @@ static void fts_set_input_prop(struct fts_ts_info *info, struct input_dev *dev, 
 	set_bit(BTN_TOOL_FINGER, dev->keybit);
 	set_bit(KEY_BLACK_UI_GESTURE, dev->keybit);
 	set_bit(KEY_HOMEPAGE, dev->keybit);
+	set_bit(KEY_WAKEUP, dev->keybit);
 
 #ifdef FTS_SUPPORT_TOUCH_KEY
 	if (info->board->support_mskey) {
@@ -3014,10 +3016,12 @@ static void fts_input_close(struct input_dev *dev)
 	if (info->board->use_pressure)
 		info->lowpower_flag |= FTS_MODE_PRESSURE;
 #endif
-	if (info->prox_power_off)
-		fts_stop_device(info, 0);
-	else
-		fts_stop_device(info, info->lowpower_flag);
+	/* Always use lowpower mode so touch can wake the device.
+	 * prox_power_off forces POWERDOWN but SM-T510 has no proximity sensor,
+	 * and the framework may set it incorrectly. */
+	if (!info->lowpower_flag)
+		info->lowpower_flag = FTS_MODE_DOUBLETAP_WAKEUP;
+	fts_stop_device(info, info->lowpower_flag);
 	info->prox_power_off = 0;
 
 }
