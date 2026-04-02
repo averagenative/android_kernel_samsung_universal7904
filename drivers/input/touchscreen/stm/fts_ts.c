@@ -3300,6 +3300,8 @@ static void fts_input_close(struct input_dev *dev)
 	 * Without this, lowpower_flag=0 causes POWERDOWN which disables IRQ wake. */
 	if (!info->lowpower_flag)
 		info->lowpower_flag = FTS_MODE_AOD;
+	input_info(true, &info->client->dev, "%s: lowpower_flag=0x%x, calling stop with lpmode=%d\n",
+		__func__, info->lowpower_flag, !!info->lowpower_flag);
 	fts_stop_device(info, info->lowpower_flag);
 
 #ifdef FTS_SUPPORT_HOVER
@@ -3689,8 +3691,9 @@ static int fts_stop_device(struct fts_ts_info *info, bool lpmode)
 		goto out;
 	}
 
+	input_info(true, &info->client->dev, "%s: lpmode=%d lowpower_flag=0x%x\n", __func__, lpmode, info->lowpower_flag);
 	if (lpmode) {
-		input_info(true, &info->client->dev, "%s: lowpower flag:%d\n", __func__, info->lowpower_flag);
+		input_info(true, &info->client->dev, "%s: entering LOWPOWER mode\n", __func__);
 
 		if (info->board->support_sidegesture) {
 			fts_enable_feature(info, FTS_FEATURE_SIDE_GUSTURE, true);

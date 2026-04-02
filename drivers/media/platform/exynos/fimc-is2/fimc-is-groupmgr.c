@@ -200,6 +200,9 @@ static int fimc_is_gframe_check(struct fimc_is_group *gprev,
 		node = &gframe->group_cfg[group->slot].capture[capture_id];
 		if (node->vid == 0) /* no effect */
 			continue;
+		if (node->request)
+			pr_info_ratelimited("[@][%d] capture[%d] vid=%d request=%d\n",
+				group->id, capture_id, node->vid, node->request);
 
 		otcrop = (struct fimc_is_crop *)node->output.cropRegion;
 		subdev = video2subdev(FIMC_IS_ISCHAIN_SUBDEV, (void *)device, node->vid);
